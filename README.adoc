@@ -1,0 +1,33 @@
+= Jira Cli
+
+A simple JIRA cli using demonstrating the usage of Java 11, GraalVM and Apache OpenWebBeans (CDI container).
+
+== Build
+
+[source,sh]
+----
+mvn package -Pnative
+----
+
+== Usage
+
+Pre-requisite: you built it, at that time there is no release yet or deliverable.
+
+[source,sh]
+----
+# once for all
+./target/jira-cli login \
+    --jira-username "$USER\@company.com" \
+    --jira-cloud-token 'xxxxxxx'
+
+# then run a command
+./target/jira-cli list \
+    --jira-base https://.... \
+    --jpql project=TEST
+----
+
+== TODO
+
+- shade (for java flavor and where graal does not run)
+- more commands
+- extract most of OWB integration in a Geronimo Arthur Knight ready to use
