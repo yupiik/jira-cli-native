@@ -27,7 +27,7 @@
   <properties>
     <slf4j.version>1.7.30</slf4j.version>
     <geronimo-config.version>1.2.2</geronimo-config.version>
-    <openwebbeans.version>2.0.17-SNAPSHOT</openwebbeans.version>
+    <openwebbeans.version>2.0.17</openwebbeans.version>
     <johnzon.version>1.2.8-SNAPSHOT</johnzon.version>
   </properties>
 
