@@ -27,28 +27,21 @@
   <properties>
     <slf4j.version>1.7.30</slf4j.version>
     <geronimo-config.version>1.2.2</geronimo-config.version>
-    <openwebbeans.version>2.0.17</openwebbeans.version>
-    <johnzon.version>1.2.8-SNAPSHOT</johnzon.version>
+    <openwebbeans.version>2.0.21</openwebbeans.version>
+    <johnzon.version>1.2.9</johnzon.version>
   </properties>
 
   <dependencies>
     <dependency>
       <groupId>org.projectlombok</groupId>
       <artifactId>lombok</artifactId>
-      <version>1.18.12</version>
+      <version>1.18.16</version>
       <scope>provided</scope>
     </dependency>
     <dependency>
       <groupId>org.apache.geronimo.arthur</groupId>
       <artifactId>arthur-api</artifactId>
       <version>1.0.0</version>
-      <scope>provided</scope>
-    </dependency>
-
-    <dependency>
-      <groupId>org.graalvm.nativeimage</groupId>
-      <artifactId>svm</artifactId>
-      <version>20.1.0</version>
       <scope>provided</scope>
     </dependency>
 
@@ -100,7 +93,7 @@
 
     <dependency>
       <groupId>org.slf4j</groupId>
-      <artifactId>slf4j-simple</artifactId>
+      <artifactId>slf4j-jdk14</artifactId>
       <version>${slf4j.version}</version>
     </dependency>
     <dependency>
@@ -136,9 +129,18 @@
     <plugins>
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-resources-plugin</artifactId>
+        <version>3.1.0</version>
+        <configuration>
+          <encoding>UTF-8</encoding>
+        </configuration>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-compiler-plugin</artifactId>
         <version>3.8.1</version>
         <configuration>
+          <encoding>UTF-8</encoding>
           <release>11</release>
           <source>11</source>
           <target>11</target>
@@ -158,34 +160,45 @@
   <profiles>
     <profile>
       <id>native</id>
+      <properties>
+        <arthur.version>1.0.1</arthur.version>
+      </properties>
+      <dependencies>
+        <dependency>
+          <groupId>org.apache.geronimo.arthur.knights</groupId>
+          <artifactId>slf4j-knight</artifactId>
+          <version>${arthur.version}</version>
+          <exclusions>
+            <exclusion> <!-- let our project force the version -->
+              <groupId>org.slf4j</groupId>
+              <artifactId>*</artifactId>
+            </exclusion>
+          </exclusions>
+        </dependency>
+        <dependency>
+          <groupId>org.apache.geronimo.arthur.knights</groupId>
+          <artifactId>openwebbeans-knight</artifactId>
+          <version>${arthur.version}</version>
+          <exclusions> <!-- let our project force the version -->
+            <exclusion>
+              <groupId>*</groupId>
+              <artifactId>*</artifactId>
+            </exclusion>
+          </exclusions>
+        </dependency>
+        <!-- to have a configurable logger at runtime -->
+        <dependency>
+          <groupId>io.yupiik.logging</groupId>
+          <artifactId>yupiik-logging-jul</artifactId>
+          <version>1.0-SNAPSHOT</version>
+        </dependency>
+      </dependencies>
       <build>
         <plugins>
-          <plugin>
-            <groupId>org.codehaus.mojo</groupId>
-            <artifactId>exec-maven-plugin</artifactId>
-            <version>1.6.0</version>
-            <executions>
-              <execution>
-                <id>dump-proxies</id>
-                <phase>package</phase>
-                <goals>
-                  <goal>java</goal>
-                </goals>
-              </execution>
-            </executions>
-            <configuration>
-              <mainClass>io.yupiik.jira.cli.Cli</mainClass>
-              <arguments>
-                <argument>dump</argument>
-                <argument>--dump-output</argument>
-                <argument>${project.build.outputDirectory}</argument>
-              </arguments>
-            </configuration>
-          </plugin>
-          <plugin> <!-- mvn package arthur:native-image -->
+          <plugin> <!-- mvn package -->
             <groupId>org.apache.geronimo.arthur</groupId>
             <artifactId>arthur-maven-plugin</artifactId>
-            <version>1.0.0</version>
+            <version>${arthur.version}</version>
             <executions>
               <execution>
                 <id>native</id>
@@ -197,194 +210,32 @@
             </executions>
             <configuration>
               <main>io.yupiik.jira.cli.Cli</main>
-              <graalVersion>20.1.0.r11</graalVersion>
+              <graalVersion>20.3.0.r11</graalVersion>
               <output>${project.build.directory}/jira-cli</output>
-              <resources>
-                <resource>
-                  <pattern>META\-INF/openwebbeans/openwebbeans\.properties</pattern>
-                </resource>
-                <resource>
-                  <pattern>openwebbeans/Messages\.properties</pattern>
-                </resource>
-                <resource>
-                  <pattern>io/yupiik/jira/cli/.*\.class</pattern>
-                </resource>
-                <resource>
-                  <pattern>org/eclipse/microprofile/config/.*\.class</pattern>
-                </resource>
-                <resource>
-                  <pattern>org/apache/geronimo/config/.*\.class</pattern>
-                </resource>
-              </resources>
-              <includeResourceBundles>
-                <includeResourceBundle>openwebbeans/Messages</includeResourceBundle>
-              </includeResourceBundles>
-              <reflections>
-                <reflection>
-                  <name>org.apache.webbeans.spi.ScannerService</name>
-                </reflection>
-                <reflection>
-                  <name>org.apache.webbeans.spi.LoaderService</name>
-                </reflection>
-                <reflection>
-                  <name>org.apache.webbeans.spi.BeanArchiveService</name>
-                </reflection>
-                <reflection>
-                  <name>org.apache.webbeans.spi.SecurityService</name>
-                </reflection>
-                <reflection>
-                  <name>org.apache.webbeans.spi.ContainerLifecycle</name>
-                </reflection>
-                <reflection>
-                  <name>org.apache.webbeans.spi.JNDIService</name>
-                </reflection>
-                <reflection>
-                  <name>org.apache.webbeans.spi.ApplicationBoundaryService</name>
-                </reflection>
-                <reflection>
-                  <name>org.apache.webbeans.spi.ContextsService</name>
-                </reflection>
-                <reflection>
-                  <name>org.apache.webbeans.spi.InjectionPointService</name>
-                </reflection>
-                <reflection>
-                  <name>org.apache.webbeans.spi.ResourceInjectionService</name>
-                </reflection>
-                <reflection>
-                  <name>org.apache.webbeans.spi.DefiningClassService</name>
-                </reflection>
-                <reflection>
-                  <name>org.apache.xbean.finder.filter.Filter</name>
-                </reflection>
-                <reflection>
-                  <name>org.apache.webbeans.service.ClassLoaderProxyService$Spy</name>
-                  <allPublicConstructors>true</allPublicConstructors>
-                </reflection>
-                <reflection>
-                  <name>org.apache.webbeans.service.ClassLoaderProxyService$LoadFirst</name>
-                  <allPublicConstructors>true</allPublicConstructors>
-                </reflection>
-                <reflection>
-                  <name>org.apache.webbeans.lifecycle.StandaloneLifeCycle</name>
-                  <allPublicConstructors>true</allPublicConstructors>
-                </reflection>
-                <reflection>
-                  <name>org.apache.webbeans.corespi.se.StandaloneContextsService</name>
-                  <allPublicConstructors>true</allPublicConstructors>
-                </reflection>
-                <reflection>
-                  <name>org.apache.webbeans.service.DefaultLoaderService</name>
-                  <allPublicConstructors>true</allPublicConstructors>
-                </reflection>
-                <reflection>
-                  <name>org.apache.webbeans.inject.impl.InjectionPointImpl</name>
-                </reflection>
-                <reflection>
-                  <name>org.apache.webbeans.conversation.ConversationImpl</name>
-                  <allPublicConstructors>true</allPublicConstructors>
-                </reflection>
-                <reflection>
-                  <name>org.apache.webbeans.intercept.ApplicationScopedBeanInterceptorHandler</name>
-                  <allDeclaredConstructors>true</allDeclaredConstructors>
-                </reflection>
-                <reflection>
-                  <name>javax.enterprise.context.Initialized</name>
-                  <allDeclaredMethods>true</allDeclaredMethods>
-                </reflection>
-                <reflection>
-                  <name>javax.enterprise.context.NormalScope</name>
-                  <allDeclaredMethods>true</allDeclaredMethods>
-                </reflection>
-                <reflection>
-                  <name>javax.enterprise.context.ApplicationScoped</name>
-                  <allDeclaredMethods>true</allDeclaredMethods>
-                </reflection>
-                <reflection>
-                  <name>javax.enterprise.inject.Default</name>
-                  <allDeclaredMethods>true</allDeclaredMethods>
-                </reflection>
-                <reflection>
-                  <name>javax.enterprise.context.Dependent</name>
-                  <allDeclaredMethods>true</allDeclaredMethods>
-                </reflection>
-                <reflection>
-                  <name>javax.enterprise.event.Observes</name>
-                  <allDeclaredMethods>true</allDeclaredMethods>
-                </reflection>
-                <reflection>
-                  <name>javax.enterprise.event.ObservesAsync</name>
-                  <allDeclaredMethods>true</allDeclaredMethods>
-                </reflection>
-                <reflection>
-                  <name>org.eclipse.microprofile.config.inject.ConfigProperty</name>
-                  <allDeclaredMethods>true</allDeclaredMethods>
-                </reflection>
-                <reflection>
-                  <name>javax.inject.Qualifier</name>
-                  <allDeclaredMethods>true</allDeclaredMethods>
-                </reflection>
-                <reflection>
-                  <name>javax.interceptor.InterceptorBinding</name>
-                  <allDeclaredMethods>true</allDeclaredMethods>
-                </reflection>
-                <reflection>
-                  <name>org.apache.openwebbeans.slf4j.Slf4jLoggerFactory</name>
-                </reflection>
-                <reflection> <!-- ServiceLoaderFeature enables its instantiation but not reflection on its methods -->
-                  <name>org.apache.geronimo.config.cdi.ConfigExtension</name>
-                  <allPublicConstructors>true</allPublicConstructors>
-                  <allDeclaredMethods>true</allDeclaredMethods>
-                </reflection>
-                <reflection>
-                  <name>io.yupiik.jira.cli.command.service.JiraClient$$$$OwbNormalScopeProxy0</name>
-                  <allDeclaredConstructors>true</allDeclaredConstructors>
-                  <allDeclaredMethods>true</allDeclaredMethods>
-                  <allDeclaredFields>true</allDeclaredFields>
-                </reflection>
-                <reflection>
-                  <name>io.yupiik.jira.cli.command.service.HttpClientProducer$$$$OwbNormalScopeProxy0</name>
-                  <allDeclaredConstructors>true</allDeclaredConstructors>
-                  <allDeclaredMethods>true</allDeclaredMethods>
-                  <allDeclaredFields>true</allDeclaredFields>
-                </reflection>
-                <reflection>
-                  <name>io.yupiik.jira.cli.command.service.JsonbProducer$$$$OwbNormalScopeProxy0</name>
-                  <allDeclaredConstructors>true</allDeclaredConstructors>
-                  <allDeclaredMethods>true</allDeclaredMethods>
-                  <allDeclaredFields>true</allDeclaredFields>
-                </reflection>
-                <reflection>
-                  <name>org.apache.webbeans.custom.json.bind.Jsonb$$$$OwbNormalScopeProxy0</name>
-                  <allDeclaredConstructors>true</allDeclaredConstructors>
-                  <allDeclaredMethods>true</allDeclaredMethods>
-                  <allDeclaredFields>true</allDeclaredFields>
-                </reflection>
-              </reflections>
-              <initializeAtBuildTime>
-                <initializeAtBuildTime>javax.enterprise.event.Reception</initializeAtBuildTime>
-                <initializeAtBuildTime>javax.enterprise.event.TransactionPhase</initializeAtBuildTime>
-                <initializeAtBuildTime>org.apache.webbeans.corespi.DefaultSingletonService</initializeAtBuildTime>
-                <!-- logging stack -->
-                <initializeAtBuildTime>org.apache.webbeans.logger.WebBeansLoggerFacade</initializeAtBuildTime>
-                <initializeAtBuildTime>org.slf4j.impl.StaticLoggerBinder</initializeAtBuildTime>
-                <initializeAtBuildTime>org.slf4j.LoggerFactory</initializeAtBuildTime>
-                <initializeAtBuildTime>org.apache.openwebbeans.slf4j.Slf4jLogger</initializeAtBuildTime>
-                <initializeAtBuildTime>org.slf4j.impl.SimpleLogger</initializeAtBuildTime>
-              </initializeAtBuildTime>
+              <!-- graalExtensions: handled by dependencies to control the transitive tree -->
               <customOptions>
                 <customOption>--enable-http</customOption>
                 <customOption>--enable-https</customOption>
-                <customOption>-Dorg.slf4j.simpleLogger.logFile=System.out</customOption>
-                <customOption>-Dorg.slf4j.simpleLogger.showThreadName=false</customOption>
-                <customOption>-Dorg.slf4j.simpleLogger.showLogName=false</customOption>
-                <customOption>-Dorg.slf4j.simpleLogger.showShortLogName=false</customOption>
-                <customOption>-Dorg.slf4j.simpleLogger.levelInBrackets=true</customOption>
+                <!-- keep a logger configurable at runtime -->
+                <customOption>-Djava.util.logging.manager=io.yupiik.logging.jul.YupiikLogManager</customOption>
                 <!--<customOption>-Djdk.internal.httpclient.debug=true</customOption>-->
               </customOptions>
             </configuration>
           </plugin>
         </plugins>
       </build>
+      <repositories>
+        <repository>
+          <id>arthur-staging</id>
+          <url>https://repository.apache.org/content/repositories/orgapachegeronimo-1136/</url>
+        </repository>
+      </repositories>
+      <pluginRepositories>
+        <pluginRepository>
+          <id>arthur-staging</id>
+          <url>https://repository.apache.org/content/repositories/orgapachegeronimo-1136/</url>
+        </pluginRepository>
+      </pluginRepositories>
     </profile>
   </profiles>
 </project>

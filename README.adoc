@@ -28,6 +28,4 @@ Pre-requisite: you built it, at that time there is no release yet or deliverable
 
 == TODO
 
-- shade (for java flavor and where graal does not run)
 - more commands
-- extract most of OWB integration in a Geronimo Arthur Knight ready to use
