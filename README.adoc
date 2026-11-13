@@ -2,16 +2,30 @@
 
 A simple JIRA cli using demonstrating the usage of Java 11, GraalVM and Apache OpenWebBeans (CDI container).
 
+It exposes commands to authenticate against a JIRA instance and to query issues through the JIRA REST API (default path `/rest/api/latest`). HTTP calls use the JDK `HttpClient`, JSON is handled by Johnzon (JSON-B), and commands are CDI beans resolved by Apache OpenWebBeans.
+
+== Prerequisites
+
+- Java 11 (the build compiles with `--release 11`)
+- Maven
+- GraalVM 20.3.0.r11, only needed for the `native` profile
+
 == Build
 
 [source,sh]
 ----
+# JVM build
+mvn package
+
+# native image build (needs GraalVM), produces ./target/jira-cli
 mvn package -Pnative
 ----
 
 == Usage
 
 Pre-requisite: you built it, at that time there is no release yet or deliverable.
+
+Options are passed as `--key-value value` and mapped to the `key.value` configuration property. The `login` and `set-base` commands store their values in the `~/.yupiikjiraclirc` properties file so that later commands can reuse them.
 
 [source,sh]
 ----
@@ -25,6 +39,33 @@ Pre-requisite: you built it, at that time there is no release yet or deliverable
     --jira-base https://.... \
     --jpql project=TEST
 ----
+
+Alternatively, store the JIRA base URL once with `set-base` and only pass the query afterwards:
+
+[source,sh]
+----
+./target/jira-cli set-base --jira-base https://....
+./target/jira-cli list --jpql project=TEST
+----
+
+=== Commands
+
+- `login`: creates a `~/.yupiikjiraclirc` file with authentication information for future commands.
+  - `--jira-username`
+  - `--jira-cloud-token`
+- `set-base`: add jira base to `~/.yupiikjiraclirc` file.
+  - `--jira-base`
+- `list`: list issues with the provided filter.
+  - `--jpql` (JQL query, default: empty)
+  - `--issues-status` (default: `-`)
+  - `--issues-version` (default: `-`)
+  - `--jira-base` (default: empty)
+  - `--jira-maxResults` (default: `20`)
+  - `--jira-startAt` (default: `0`)
+  - `--jira-columns` (default: `id,key,fixVersion,summary,url`)
+  - `--jira-token` (normally set by `login` in `~/.yupiikjiraclirc`)
+  - `--jira-api-path` (default: `/rest/api/latest`)
+- `help`: show help.
 
 == TODO
 
