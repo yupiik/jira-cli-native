@@ -1,31 +1,193 @@
-= Jira Cli
+= Jira CLI
+A small Jira command-line client, built to be compiled into a single native binary.
 
-A simple JIRA cli using demonstrating the usage of Java 11, GraalVM and Apache OpenWebBeans (CDI container).
+This project is a little terminal tool to query a Jira site. It is also a
+demonstration of a modern Java stack: Java 11, a CDI container
+(https://openwebbeans.apache.org[Apache OpenWebBeans]), MicroProfile Config and
+JSON-B (Apache Johnzon), compiled to a self-contained native binary with
+https://github.com/apache/geronimo-arthur[Apache Geronimo arthur] and GraalVM.
+Once built, the binary starts in milliseconds and does not need a JVM.
 
-== Build
+== What you get
+
+* `login` — store your credentials once, in `~/.yupiikjiraclirc`
+* `set-base` — remember the URL of your Jira site
+* `list` — run JQL queries and print a table of issues
+* instant startup, no JVM at runtime, a single file to copy around
+
+== Requirements
+
+* JDK 11 or newer
+* Maven 3.6 or newer
+* a Jira Cloud account and an API/personal access token for it (create one at
+  https://id.atlassian.com[Atlassian])
+
+There is no released binary yet, so you build it from source.
+
+== Building
 
 [source,sh]
 ----
 mvn package -Pnative
 ----
 
-== Usage
+Maven compiles the code and then the arthur plugin produces the native binary:
 
-Pre-requisite: you built it, at that time there is no release yet or deliverable.
+* `target/jira-cli` — the executable, no JVM required
+
+The default build (without `-Pnative`) only compiles the code and runs the unit
+tests; it is useful for development, but the native binary needs the `native`
+profile.
+
+== Quick start
+
+Assume you have a Jira Cloud site at `https://yourcompany.atlassian.net`.
+
+1. Log in once. This creates `~/.yupiikjiraclirc` and stores your
+   authentication information in it:
+
++
+[source,sh]
+----
+./target/jira-cli login \
+    --jira-username "john@company.com" \
+    --jira-cloud-token "xxxxxxxxxxxxxxxx"
+----
+
++
+Tip: quote the username in the shell, `@` is special in some shells.
+
+2. Remember the base URL of your site (stored in the same rc file):
+
++
+[source,sh]
+----
+./target/jira-cli set-base --jira-base https://yourcompany.atlassian.net
+----
+
+3. Query it. Once the two steps above are done, plain commands work from any
+   directory, because everything is read from `~/.yupiikjiraclirc`:
+
++
+[source,sh]
+----
+./target/jira-cli list --jpql "project = TEST AND status = Open"
+----
+
++
+The output is a table:
+
++
+[source,txt]
+----
+ id       key     fixVersion  summary          url
+ 10001    TEST-1  1.0         Improve login    https://yourcompany.atlassian.net/browse/TEST-1
+ 10002    TEST-2  1.0         Fix search       https://yourcompany.atlassian.net/browse/TEST-2
+----
+
+If the result set does not fit on one page (20 issues by default), the last
+line tells you the exact command to fetch the next page:
+
+[source,txt]
+----
+Total: 43, StartAt: 0, Next page: 'list --jpql "project = TEST AND status = Open" --jira-startAt 20'
+----
+
+== Commands
+
+Run `./target/jira-cli help` (or simply `./target/jira-cli` with no arguments)
+at any time to print the full list of commands and options.
+
+=== `login`
+
+Creates or updates `~/.yupiikjiraclirc` with the information future commands
+need to call the Jira API.
+
+|===
+| Option | Meaning
+
+| `--jira-username`
+| the email of your Jira account
+
+| `--jira-cloud-token`
+| your API/personal access token
+|===
+
+The value stored in the rc file is `jira.token`, the Base64 encoding of
+`<username>:<token>` prefixed with `Basic `.
+
+=== `set-base`
+
+Adds the base URL of your Jira site to `~/.yupiikjiraclirc`. Without it,
+commands that call the API cannot know where your site is.
+
+|===
+| Option | Meaning
+
+| `--jira-base`
+| the base URL of your Jira site, e.g. `https://yourcompany.atlassian.net`
+|===
+
+=== `list`
+
+Runs a JQL query against your Jira site and prints the issues as a table.
+
+|===
+| Option | Meaning
+
+| `--jpql`
+| the JQL expression, e.g. `project = TEST AND status = Open` (empty by default)
+
+| `--jira-base`
+| override the base URL stored in the rc file
+
+| `--jira-api-path`
+| the Jira REST API path, default `/rest/api/latest`
+
+| `--jira-maxResults`
+| page size, default `20`
+
+| `--jira-startAt`
+| row offset for pagination, default `0`
+
+| `--jira-columns`
+| comma-separated list of columns to print, default `id,key,fixVersion,summary,url`.
+Available columns: `raw`, `id`, `key`, `self`, `url`, `summary`, `fixVersion`
+
+| `--issues-status`
+| comma-separated list of statuses, added to the JQL (e.g. `Open,In Progress`)
+
+| `--issues-version`
+| comma-separated list of fix versions, added to the JQL (e.g. `1.0,1.1`)
+|===
+
+`--issues-status` and `--issues-version` are combined with `AND` into the
+effective JQL, for example:
 
 [source,sh]
 ----
-# once for all
-./target/jira-cli login \
-    --jira-username "$USER\@company.com" \
-    --jira-cloud-token 'xxxxxxx'
-
-# then run a command
 ./target/jira-cli list \
-    --jira-base https://.... \
-    --jpql project=TEST
+    --jpql "project = TEST" \
+    --issues-status "Open,In Progress" \
+    --issues-version "1.0"
 ----
 
-== TODO
+is equivalent to the JQL
+`(project = TEST) AND (status='Open' OR status='In Progress') AND (fixVersion='1.0')`.
 
-- more commands
+== How the configuration works
+
+* every `--some-thing` flag on the command line is read as the configuration
+  property `some.thing` (dashes become dots),
+* when the same value is set both on the command line and in
+  `~/.yupiikjiraclirc`, the command line wins,
+* the rc file is a standard `java.util.Properties` file; you can edit it by
+  hand. The interesting keys are `jira.base`, `jira.token` and
+  `jira.api-path` (default `/rest/api/latest`).
+
+== License
+
+Apache License 2.0, see `LICENSE`.
+
+More commands are planned; in the meantime, `help` remains the best
+documentation of what is available today.
