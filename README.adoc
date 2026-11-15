@@ -30,6 +30,8 @@ Pre-requisite: you built it, at that time there is no release yet or deliverable
 
 The `login` command stores authentication material in `~/.yupiikjiraclirc`.
 This file must never be committed or shared.
+Use `chmod 600 ~/.yupiikjiraclirc` to set owner-only permissions.
+This restricts local read/write access to the file but does not encrypt it.
 
 == TODO
 
