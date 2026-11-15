@@ -26,6 +26,11 @@ Pre-requisite: you built it, at that time there is no release yet or deliverable
     --jpql project=TEST
 ----
 
+== Security
+
+The `login` command stores authentication material in `~/.yupiikjiraclirc`.
+This file must never be committed or shared.
+
 == TODO
 
 - more commands
