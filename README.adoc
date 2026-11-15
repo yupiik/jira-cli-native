@@ -26,6 +26,17 @@ Pre-requisite: you built it, at that time there is no release yet or deliverable
     --jpql project=TEST
 ----
 
+== Security
+
+The `login` command persists your credentials as a Base64-encoded token in `~/.yupiikjiraclirc`.
+
+Treat this file as a secret: make it readable only by its owner and never commit or share it.
+
+[source,sh]
+----
+chmod 600 ~/.yupiikjiraclirc
+----
+
 == TODO
 
 - more commands
